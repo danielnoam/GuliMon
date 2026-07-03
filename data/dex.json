@@ -1,4 +1,19 @@
 {
-  "generatedAt": "2026-07-03T18:08:45.553Z",
-  "entries": []
+  "generatedAt": "2026-07-03T18:22:05.779Z",
+  "entries": [
+    {
+      "id": "young-gilguli-gy90",
+      "name": "Young Gilguli",
+      "uploaderName": "Daniel",
+      "image": "young-gilguli-gy90.png",
+      "createdAt": "2026-07-03T18:21:33.788Z"
+    },
+    {
+      "id": "hawaiian-gilguli-vx4t",
+      "name": "Hawaiian Gilguli",
+      "uploaderName": "Daniel",
+      "image": "hawaiian-gilguli-vx4t.png",
+      "createdAt": "2026-07-03T18:19:00.770Z"
+    }
+  ]
 }
