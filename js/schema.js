@@ -7,7 +7,7 @@ export const MAX_NAME_LEN = 40;
 export const MAX_DESCRIPTION_LEN = 300;
 export const MAX_UPLOADER_NAME_LEN = 40;
 export const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-export const IMAGE_PATTERN = /^(.+)\.(png|jpe?g|webp)$/i;
+export const IMAGE_PATTERN = /^(.+)\.png$/i;
 
 // Validates a parsed submission object. `expectedId`, when provided, is
 // checked against entry.id (used to confirm id matches the filename).
@@ -56,7 +56,7 @@ export function validateEntry(entry, expectedId) {
   } else {
     const match = image.match(IMAGE_PATTERN);
     if (!match) {
-      errors.push('image: must end in .png, .jpg, .jpeg, or .webp');
+      errors.push('image: must end in .png');
     } else if (typeof id === 'string' && match[1] !== id) {
       errors.push(`image: "${image}" must match id "${id}"`);
     }

@@ -4,8 +4,8 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { imageSize } from 'image-size';
 import { validateEntry } from '../../js/schema.js';
+import { readPngDimensions } from '../../js/png-dimensions.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE = process.env.GITHUB_WORKSPACE || path.resolve(__dirname, '..', '..');
@@ -66,7 +66,7 @@ if (disallowed.length > 0) {
 }
 
 const jsonFiles = added.filter((f) => f.endsWith('.json'));
-const imageFiles = added.filter((f) => /\.(png|jpe?g|webp)$/i.test(f));
+const imageFiles = added.filter((f) => /\.png$/i.test(f));
 
 if (jsonFiles.length === 0) {
   fail('At least one submission JSON added', 'No .json files found under submissions/ in this PR');
@@ -110,7 +110,7 @@ for (const jsonPath of jsonFiles) {
     pass(`${jsonPath}: schema`, 'OK');
   }
 
-  const collisionCandidates = [`${id}.json`, `${id}.png`, `${id}.jpg`, `${id}.jpeg`, `${id}.webp`];
+  const collisionCandidates = [`${id}.json`, `${id}.png`];
   if (collisionCandidates.some((name) => existingBasenames.has(name))) {
     fail(`${jsonPath}: id is unique`, `"${id}" already exists in submissions/ on the base branch`);
   } else {
@@ -139,15 +139,13 @@ for (const jsonPath of jsonFiles) {
         fail(`${matchPath}: readable file`, err.message);
       }
 
-      try {
-        const dim = imageSize(fs.readFileSync(imgFull));
-        if (dim.width > MAX_IMAGE_DIM || dim.height > MAX_IMAGE_DIM) {
-          fail(`${matchPath}: dimensions <= ${MAX_IMAGE_DIM}x${MAX_IMAGE_DIM}`, `${dim.width}x${dim.height}`);
-        } else {
-          pass(`${matchPath}: dimensions <= ${MAX_IMAGE_DIM}x${MAX_IMAGE_DIM}`, `${dim.width}x${dim.height}`);
-        }
-      } catch (err) {
-        fail(`${matchPath}: readable image`, err.message);
+      const dim = readPngDimensions(fs.readFileSync(imgFull));
+      if (!dim) {
+        fail(`${matchPath}: valid PNG`, 'could not read a PNG signature/IHDR chunk');
+      } else if (dim.width > MAX_IMAGE_DIM || dim.height > MAX_IMAGE_DIM) {
+        fail(`${matchPath}: dimensions <= ${MAX_IMAGE_DIM}x${MAX_IMAGE_DIM}`, `${dim.width}x${dim.height}`);
+      } else {
+        pass(`${matchPath}: dimensions <= ${MAX_IMAGE_DIM}x${MAX_IMAGE_DIM}`, `${dim.width}x${dim.height}`);
       }
     }
   }

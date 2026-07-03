@@ -8,7 +8,6 @@
     "dev": "wrangler pages dev ."
   },
   "devDependencies": {
-    "image-size": "^1.1.1",
     "wrangler": "^3.78.0"
   }
 }

@@ -11,6 +11,7 @@
 // actually goes live; this function only automates getting the PR opened.
 import { validateEntry, MAX_NAME_LEN, MAX_DESCRIPTION_LEN, MAX_UPLOADER_NAME_LEN } from '../../js/schema.js';
 import { generateId } from '../../js/id.js';
+import { readPngDimensions } from '../../js/png-dimensions.js';
 
 const OWNER = 'danielnoam';
 const REPO = 'GuliMon';
@@ -156,16 +157,6 @@ export function bytesToBase64(bytes) {
     binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
   }
   return btoa(binary);
-}
-
-export function readPngDimensions(bytes) {
-  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-  if (bytes.byteLength < 24) return null;
-  for (let i = 0; i < signature.length; i++) {
-    if (bytes[i] !== signature[i]) return null;
-  }
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  return { width: view.getUint32(16, false), height: view.getUint32(20, false) };
 }
 
 function json(payload, status = 200) {

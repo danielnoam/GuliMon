@@ -84,5 +84,13 @@ npm test
    enable "Allow GitHub Actions to create and approve pull requests" — this
    is what lets `automerge-submission.yml` merge PRs and delete their
    branches with the default `GITHUB_TOKEN`.
+6. **Add a repository secret named `SUBMISSION_PAT`** (Settings → Secrets and
+   variables → Actions → New repository secret) with the *same* token from
+   step 1. This one matters more than it sounds: GitHub silently refuses to
+   trigger further workflows from anything pushed using the automatic
+   `GITHUB_TOKEN` (an anti-recursion safeguard), so without this,
+   `automerge-submission.yml` can merge PRs just fine but `build-dex.yml`
+   will never notice — the GuliDex just won't update after a bot-merged PR.
+   A PAT doesn't have that restriction.
 
 No GitHub Pages setup is needed — Cloudflare Pages now serves the site.
