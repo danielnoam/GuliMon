@@ -1,15 +1,5 @@
-import {
-  generateId,
-  buildForkUrl,
-  buildUploadUrl,
-  buildCreateFileUrlWithTruncation,
-  buildCompareUrl,
-} from './github-links.js';
-import { validateEntry, MAX_NAME_LEN, MAX_DESCRIPTION_LEN } from './schema.js';
+import { MAX_NAME_LEN, MAX_DESCRIPTION_LEN, MAX_UPLOADER_NAME_LEN } from './schema.js';
 
-const OWNER = 'danielnoam1999';
-const REPO = 'GuliMon';
-const BRANCH = 'main';
 const MAX_IMAGE_DIM = 512;
 const MAX_IMAGE_BYTES = 500 * 1024;
 const PENDING_KEY = 'gulimon_pending';
@@ -17,33 +7,25 @@ const PENDING_KEY = 'gulimon_pending';
 const form = document.getElementById('submit-form');
 const nameInput = document.getElementById('field-name');
 const descriptionInput = document.getElementById('field-description');
-const usernameInput = document.getElementById('field-username');
+const uploaderInput = document.getElementById('field-uploader');
 const fileInput = document.getElementById('field-image');
 const descCounter = document.getElementById('description-counter');
 const formErrors = document.getElementById('form-errors');
 const previewCanvas = document.getElementById('preview-canvas');
 const previewNote = document.getElementById('preview-note');
-const generateBtn = document.getElementById('generate-btn');
-const startOverBtn = document.getElementById('start-over-btn');
+const submitBtn = document.getElementById('submit-btn');
 
 const formSection = document.getElementById('form-section');
-const stepsSection = document.getElementById('steps-section');
-
-const downloadBtn = document.getElementById('step-download-btn');
-const forkLink = document.getElementById('step-fork-link');
-const uploadLink = document.getElementById('step-upload-link');
-const uploadDoneCheck = document.getElementById('step-upload-done');
-const createLink = document.getElementById('step-create-link');
-const createDoneCheck = document.getElementById('step-create-done');
-const prLink = document.getElementById('step-pr-link');
-const truncationWarning = document.getElementById('truncation-warning');
-const pendingSavedNote = document.getElementById('pending-saved-note');
+const successSection = document.getElementById('success-section');
+const successMessage = document.getElementById('success-message');
+const prLinkOut = document.getElementById('success-pr-link');
+const submitAnotherBtn = document.getElementById('submit-another-btn');
 
 let compressedBlob = null;
-let downloadHappened = false;
 
 descriptionInput.maxLength = MAX_DESCRIPTION_LEN;
 nameInput.maxLength = MAX_NAME_LEN;
+uploaderInput.maxLength = MAX_UPLOADER_NAME_LEN;
 
 descriptionInput.addEventListener('input', () => {
   descCounter.textContent = `${descriptionInput.value.length} / ${MAX_DESCRIPTION_LEN}`;
@@ -95,19 +77,16 @@ function loadImage(file) {
   });
 }
 
-let currentSubmission = null; // { id, entry, blob }
-
-form.addEventListener('submit', (event) => {
+form.addEventListener('submit', async (event) => {
   event.preventDefault();
   formErrors.textContent = '';
 
   const name = nameInput.value.trim();
   const description = descriptionInput.value.trim();
-  const username = usernameInput.value.trim().replace(/^@/, '');
+  const uploaderName = uploaderInput.value.trim();
 
   const problems = [];
   if (!name) problems.push('Gilguli name is required.');
-  if (!username) problems.push('Your GitHub username is required.');
   if (!compressedBlob) problems.push('Please choose an image.');
 
   if (problems.length > 0) {
@@ -115,37 +94,39 @@ form.addEventListener('submit', (event) => {
     return;
   }
 
-  const id = generateId(name);
-  const entry = {
-    id,
-    name,
-    ...(description ? { description } : {}),
-    uploaderGithubUsername: username,
-    image: `${id}.png`,
-    createdAt: new Date().toISOString(),
-  };
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
 
-  const { errors } = validateEntry(entry, id);
-  if (errors.length > 0) {
-    formErrors.textContent = `Internal validation error: ${errors.join('; ')}`;
-    return;
+  try {
+    const imageDataUrl = previewCanvas.toDataURL('image/png');
+
+    const body = new FormData();
+    body.set('name', name);
+    body.set('description', description);
+    body.set('uploaderName', uploaderName);
+    body.set('image', compressedBlob, 'image.png');
+
+    const res = await fetch('/api/submit', { method: 'POST', body });
+    const result = await res.json();
+
+    if (!res.ok || !result.ok) {
+      throw new Error(result.error || `Submission failed (${res.status})`);
+    }
+
+    savePending({ ...result.entry, imageDataUrl });
+    showSuccess(result);
+  } catch (err) {
+    formErrors.textContent = `Could not submit: ${err.message}`;
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit';
   }
-
-  currentSubmission = { id, entry, blob: compressedBlob, username };
-  savePending(currentSubmission);
-  renderSteps(currentSubmission);
-
-  formSection.hidden = true;
-  stepsSection.hidden = false;
 });
 
-function savePending({ id, entry }) {
-  const pending = readPending();
-  const imageDataUrl = previewCanvas.toDataURL('image/png');
-  const withoutExisting = pending.filter((p) => p.id !== id);
-  withoutExisting.push({ ...entry, imageDataUrl });
-  localStorage.setItem(PENDING_KEY, JSON.stringify(withoutExisting));
-  pendingSavedNote.hidden = false;
+function savePending(entryWithPreview) {
+  const pending = readPending().filter((p) => p.id !== entryWithPreview.id);
+  pending.push(entryWithPreview);
+  localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
 }
 
 function readPending() {
@@ -158,78 +139,19 @@ function readPending() {
   }
 }
 
-function renderSteps({ id, entry, blob, username }) {
-  downloadHappened = false;
-  uploadDoneCheck.checked = false;
-  createDoneCheck.checked = false;
-
-  downloadBtn.onclick = () => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${id}.png`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    downloadHappened = true;
-    updateGating();
-  };
-
-  forkLink.href = buildForkUrl(OWNER, REPO);
-  uploadLink.href = buildUploadUrl(username, REPO, BRANCH);
-
-  const { url: createUrl, truncated } = buildCreateFileUrlWithTruncation(username, REPO, BRANCH, id, entry);
-  createLink.href = createUrl;
-  truncationWarning.hidden = !truncated;
-
-  prLink.href = buildCompareUrl(OWNER, REPO, username, BRANCH);
-
-  updateGating();
+function showSuccess({ entry, prUrl }) {
+  successMessage.textContent = `"${entry.name}" was submitted and will appear on the GuliDex automatically once it passes automated checks — usually within a minute or two.`;
+  prLinkOut.href = prUrl;
+  formSection.hidden = true;
+  successSection.hidden = false;
 }
 
-function updateGating() {
-  // Step 1 (fork) has no prerequisites once the form is submitted.
-  forkLink.classList.remove('is-disabled');
-
-  // Step 2/3 need the image downloaded first (it's what gets uploaded to GitHub).
-  const canUploadOrCreate = downloadHappened;
-  setLinkEnabled(uploadLink, canUploadOrCreate);
-  setLinkEnabled(createLink, canUploadOrCreate);
-  uploadDoneCheck.disabled = !canUploadOrCreate;
-  createDoneCheck.disabled = !canUploadOrCreate;
-
-  // Step 4 (open PR) needs both prior steps self-confirmed complete, since
-  // we have no way to verify fork/file state without burning API rate limit.
-  const canOpenPr = uploadDoneCheck.checked && createDoneCheck.checked;
-  setLinkEnabled(prLink, canOpenPr);
-}
-
-uploadDoneCheck.addEventListener('change', updateGating);
-createDoneCheck.addEventListener('change', updateGating);
-
-function setLinkEnabled(anchor, enabled) {
-  anchor.classList.toggle('is-disabled', !enabled);
-  if (enabled) {
-    anchor.removeAttribute('aria-disabled');
-  } else {
-    anchor.setAttribute('aria-disabled', 'true');
-  }
-}
-
-document.querySelectorAll('.step-link').forEach((anchor) => {
-  anchor.addEventListener('click', (event) => {
-    if (anchor.classList.contains('is-disabled')) event.preventDefault();
-  });
-});
-
-startOverBtn.addEventListener('click', () => {
+submitAnotherBtn.addEventListener('click', () => {
   form.reset();
   compressedBlob = null;
-  currentSubmission = null;
   previewNote.textContent = '';
   descCounter.textContent = `0 / ${MAX_DESCRIPTION_LEN}`;
-  pendingSavedNote.hidden = true;
+  formErrors.textContent = '';
   formSection.hidden = false;
-  stepsSection.hidden = true;
+  successSection.hidden = true;
 });

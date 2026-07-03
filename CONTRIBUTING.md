@@ -1,62 +1,58 @@
 # Contributing to GuliMon
 
-GuliMon has no backend and no login on the site itself. Adding a Gilguli to
-the public GuliDex means opening a pull request against this repo, under
-your own GitHub account. There is no API token involved anywhere — every
-write action happens on github.com, in your own logged-in browser session.
+Adding a Gilguli to the public GuliDex is a single click: fill in the form on
+[submit.html](submit.html) and hit Submit. No GitHub account, no fork, no
+manual pull request — a Cloudflare Pages Function does all of that for you
+in the background.
 
 ## How submission works
 
 1. Go to [submit.html](submit.html) and fill in the form: a name, an
-   optional description, your GitHub username, and an image.
-2. The page resizes/compresses your image client-side and lets you
-   **download** the result — this is the exact file you'll upload to GitHub.
-3. It then walks you through four steps, each a pre-built GitHub link that
-   opens in a new tab:
-   1. **Fork** this repo to your account.
-   2. **Upload** the downloaded image to `submissions/<id>.png` in your fork.
-   3. **Create** `submissions/<id>.json` — the link pre-fills the JSON
-      content for you, so you just need to hit commit.
-   4. **Open a pull request** comparing your fork's `main` against this
-      repo's `main`.
+   optional description, an optional uploader name (just a display credit,
+   not verified), and an image.
+2. The page resizes/compresses your image client-side, then POSTs it to
+   `/api/submit`.
+3. That function (the only server-side code in this whole project) creates a
+   branch in this repo, commits `submissions/<id>.png` and
+   `submissions/<id>.json`, and opens a pull request — automatically, using
+   its own GitHub credentials. You never touch GitHub directly.
+4. Your submission is saved to this browser's local storage the moment the
+   function responds, so it shows up under "Pending review" on the
+   [GuliDex](index.html) immediately. Use "Check status" there to see when
+   it's gone public (this checks the public `data/dex.json`, not the GitHub
+   API, to stay within GitHub's unauthenticated rate limit).
 
-Steps 2 and 3 must both be committed to your fork before you do step 4, or
-the PR will only show one of the two files.
+## What happens after the PR is opened
 
-Until your PR is merged, your submission only exists in your own browser's
-local storage — it's marked "Pending review" on the GuliDex, visible only to
-you. Use the "Check status" button on your pending card to see if it has
-gone live (this checks the public `data/dex.json`, not the GitHub API, to
-stay within GitHub's unauthenticated rate limit).
+**Moderation here is automated, not human-curated.** The same pipeline this
+project always used still runs, whether the PR was opened by hand (old flow)
+or by the function (current flow):
 
-## What happens to your PR
-
-**Moderation here is automated, not human-curated.** When you open a PR:
-
-1. `validate-submission.yml` checks that your PR only *adds* files under
-   `submissions/`, that your JSON matches the schema below, that your image
+1. `validate-submission.yml` checks that the PR only *adds* files under
+   `submissions/`, that the JSON matches the schema below, that the image
    file matches what the JSON references, and that the image is under the
-   size/dimension caps. It leaves a comment (posted by a companion workflow,
-   see below) summarizing each check, and fails its check run on any
-   violation.
-2. If validation passes, `automerge-submission.yml` merges your PR
-   automatically — squashed, via the repo's own bot token. No one reviews
-   the image content before it goes live.
+   size/dimension caps. It fails its check run on any violation.
+2. If validation passes, `automerge-submission.yml` merges the PR
+   automatically — squashed, via the repo's own bot token — and deletes the
+   submission branch. No one reviews the image content before it goes live.
 3. `build-dex.yml` then regenerates `data/dex.json` from all
    `submissions/*.json` files and commits it back to `main`, which
    redeploys the site.
 
-If your PR fails validation, fix the reported issue and push again (or close
-and reopen with corrected files) — there's no manual review queue to wait
-on either way.
+If validation fails, the PR is left open and unmerged with a failing check —
+there's no way to retry from the site itself yet; open an issue if that
+happens to you.
 
-### Why no human review?
+### Why no human review, and why no login gate?
 
-This is an explicit, accepted tradeoff for keeping the project a truly
-static, backend-free site: `validate-submission.yml` can check shape, size,
-and schema, but it cannot judge whether an image is appropriate. If that
-becomes a real problem, the fix is a takedown workflow (revert the commit
-and block the id from being reused), not a review queue.
+This is an explicit, accepted tradeoff for keeping moderation fully
+automated: `validate-submission.yml` can check shape, size, and schema, but
+it cannot judge whether an image is appropriate, and the submit endpoint
+doesn't require any account or CAPTCHA today, so it can be spammed by a
+script. If either becomes a real problem in practice, the fixes are a
+takedown workflow (revert the commit, block the id) and adding bot
+protection (e.g. Cloudflare Turnstile) to `/api/submit` — neither is built
+yet.
 
 ## Submission schema — `submissions/<id>.json`
 
@@ -65,16 +61,22 @@ and block the id from being reused), not a review queue.
   "id": "string, required — slug + short random suffix, e.g. pyro-fox-x7k2",
   "name": "string, required, max 40 chars",
   "description": "string, optional, max 300 chars",
-  "uploaderGithubUsername": "string, optional",
+  "uploaderName": "string, optional, max 40 chars — free-text display credit, not a verified identity",
   "image": "string, required — must equal '<id>.png'",
-  "createdAt": "string, required — ISO 8601, set client-side at generation time"
+  "createdAt": "string, required — ISO 8601, set by the submit function at creation time"
 }
 ```
 
-- `id` is generated client-side: `slugify(name) + '-' + <4-char random base36>`.
-  It's the join key between the `.json` file and its matching image — both
-  must share the same basename.
+- `id` is generated server-side (in `functions/api/submit.js`, via
+  `js/id.js`): `slugify(name) + '-' + <4-char random base36>`. It's the join
+  key between the `.json` file and its matching image — both share the same
+  basename.
 - Don't hand-edit `data/dex.json` — it's regenerated by `build-dex.yml` on
   every push to `main` and any manual edits will be overwritten.
 - Editing or deleting a Gilguli after merge isn't supported yet — it would
   need a second PR against the same id's files.
+
+## Running the submit function yourself
+
+See the "Deployment" section in [README.md](README.md) for how to deploy
+`functions/api/submit.js` on Cloudflare Pages and configure its one secret.

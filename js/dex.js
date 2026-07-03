@@ -39,7 +39,7 @@ function publicCard(entry) {
       <div class="card-body">
         <h3 class="card-title">${escapeHtml(entry.name)}</h3>
         ${entry.description ? `<p class="card-description">${escapeHtml(entry.description)}</p>` : ''}
-        ${entry.uploaderGithubUsername ? `<p class="card-meta">by @${escapeHtml(entry.uploaderGithubUsername)}</p>` : ''}
+        ${entry.uploaderName ? `<p class="card-meta">by ${escapeHtml(entry.uploaderName)}</p>` : ''}
       </div>
     </article>`;
 }
@@ -52,7 +52,7 @@ function pendingCard(entry) {
       <div class="card-body">
         <h3 class="card-title">${escapeHtml(entry.name)}</h3>
         ${entry.description ? `<p class="card-description">${escapeHtml(entry.description)}</p>` : ''}
-        ${entry.uploaderGithubUsername ? `<p class="card-meta">by @${escapeHtml(entry.uploaderGithubUsername)}</p>` : ''}
+        ${entry.uploaderName ? `<p class="card-meta">by ${escapeHtml(entry.uploaderName)}</p>` : ''}
         <div class="card-actions">
           <button type="button" class="btn-status" data-id="${escapeHtml(entry.id)}">Check status</button>
           <button type="button" class="btn-remove" data-id="${escapeHtml(entry.id)}">Remove</button>

@@ -1,9 +1,11 @@
 // Schema for submissions/<id>.json. Kept dependency-free (no DOM, no Node
-// builtins) so it can be imported both by the browser wizard and, via a
-// relative copy, by the CI validation scripts under .github/scripts/.
+// builtins) so it can be imported directly by the Cloudflare Pages Function
+// (functions/api/submit.js) and by the CI validation scripts under
+// .github/scripts/, in addition to the browser.
 
 export const MAX_NAME_LEN = 40;
 export const MAX_DESCRIPTION_LEN = 300;
+export const MAX_UPLOADER_NAME_LEN = 40;
 export const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 export const IMAGE_PATTERN = /^(.+)\.(png|jpe?g|webp)$/i;
 
@@ -17,7 +19,7 @@ export function validateEntry(entry, expectedId) {
     return { errors: ['must be a JSON object'] };
   }
 
-  const { id, name, description, uploaderGithubUsername, image, createdAt } = entry;
+  const { id, name, description, uploaderName, image, createdAt } = entry;
 
   if (typeof id !== 'string' || id.length === 0) {
     errors.push('id: required string');
@@ -41,8 +43,12 @@ export function validateEntry(entry, expectedId) {
     }
   }
 
-  if (uploaderGithubUsername !== undefined && uploaderGithubUsername !== null && typeof uploaderGithubUsername !== 'string') {
-    errors.push('uploaderGithubUsername: must be a string');
+  if (uploaderName !== undefined && uploaderName !== null) {
+    if (typeof uploaderName !== 'string') {
+      errors.push('uploaderName: must be a string');
+    } else if (uploaderName.length > MAX_UPLOADER_NAME_LEN) {
+      errors.push(`uploaderName: exceeds ${MAX_UPLOADER_NAME_LEN} characters`);
+    }
   }
 
   if (typeof image !== 'string' || image.length === 0) {

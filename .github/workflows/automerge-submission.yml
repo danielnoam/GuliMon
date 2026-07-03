@@ -135,6 +135,18 @@ jobs:
                 sha: headSha, // only merge if head hasn't moved since validation
               });
               await comment(`Automerged after passing validation (head SHA \`${headSha.slice(0, 7)}\`).`);
+
+              // The submit function creates a same-repo branch (submit-<id>)
+              // per submission; clean it up post-merge so they don't pile up.
+              // Skipped for fork PRs (the legacy manual path) — we don't own
+              // those branches.
+              if (pr.head.repo && pr.head.repo.full_name === pr.base.repo.full_name) {
+                await github.rest.git.deleteRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: `heads/${pr.head.ref}`,
+                }).catch((err) => core.warning(`Could not delete branch ${pr.head.ref}: ${err.message}`));
+              }
             } catch (err) {
               const msg = [
                 `Automerge failed: ${err.message}`,

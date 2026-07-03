@@ -6,7 +6,7 @@ const validEntry = {
   id: 'pyro-fox-x7k2',
   name: 'Pyro Fox',
   description: 'A small ember-colored Gilguli.',
-  uploaderGithubUsername: 'octocat',
+  uploaderName: 'octocat',
   image: 'pyro-fox-x7k2.png',
   createdAt: '2026-07-03T00:00:00.000Z',
 };
@@ -17,7 +17,7 @@ test('accepts a well-formed entry', () => {
 });
 
 test('accepts an entry without optional fields', () => {
-  const { description, uploaderGithubUsername, ...minimal } = validEntry;
+  const { description, uploaderName, ...minimal } = validEntry;
   const { errors } = validateEntry(minimal, 'pyro-fox-x7k2');
   assert.deepEqual(errors, []);
 });
@@ -35,6 +35,11 @@ test('rejects name over the length cap', () => {
 test('rejects description over the length cap', () => {
   const { errors } = validateEntry({ ...validEntry, description: 'x'.repeat(301) }, validEntry.id);
   assert.ok(errors.some((e) => e.startsWith('description:')));
+});
+
+test('rejects uploaderName over the length cap', () => {
+  const { errors } = validateEntry({ ...validEntry, uploaderName: 'x'.repeat(41) }, validEntry.id);
+  assert.ok(errors.some((e) => e.startsWith('uploaderName:')));
 });
 
 test('rejects image field that does not match id', () => {

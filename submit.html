@@ -17,8 +17,8 @@
   <main class="container">
     <section id="form-section">
       <p class="section-note">
-        You'll need a <a href="https://github.com/signup" target="_blank" rel="noopener">GitHub account</a> and to be logged into
-        github.com in this browser — submitting means opening a pull request under your own account, there's no login here.
+        Submissions are auto-merged once automated checks pass — no human reviews the image before it goes live.
+        See <a href="CONTRIBUTING.md">CONTRIBUTING.md</a> for details.
       </p>
 
       <form id="submit-form" novalidate>
@@ -34,9 +34,9 @@
         </div>
 
         <div class="field">
-          <label for="field-username">Your GitHub username <span class="required">*</span></label>
-          <input id="field-username" name="username" type="text" required placeholder="octocat">
-          <p class="field-hint">Needed to build your fork/upload/PR links in the next step.</p>
+          <label for="field-uploader">Uploader name <span class="optional">(optional)</span></label>
+          <input id="field-uploader" name="uploaderName" type="text" maxlength="40" placeholder="octocat">
+          <p class="field-hint">Shown as credit on your Gilguli's card. Anything you like — not verified.</p>
         </div>
 
         <div class="field">
@@ -48,62 +48,20 @@
 
         <p id="form-errors" class="form-errors" role="alert"></p>
 
-        <button id="generate-btn" type="submit" class="btn btn-primary">Continue</button>
+        <button id="submit-btn" type="submit" class="btn btn-primary">Submit</button>
       </form>
     </section>
 
-    <section id="steps-section" hidden>
-      <p id="pending-saved-note" class="note-success" hidden>
-        Saved to this browser — you'll see it under "Your pending submissions" on the <a href="index.html">GuliDex</a> right away.
-      </p>
-
-      <div class="download-action">
-        <h3>Download your image</h3>
-        <p>Save the resized image first. You'll upload this exact file to GitHub in step 2.</p>
-        <button id="step-download-btn" type="button" class="btn">Download image</button>
-      </div>
-
-      <ol class="steps">
-        <li class="step">
-          <h3>Step 1 — Fork the repo</h3>
-          <p>Opens in a new tab. Fork it to your own GitHub account (this only needs to happen once).</p>
-          <a id="step-fork-link" class="btn step-link" target="_blank" rel="noopener">Fork on GitHub</a>
-        </li>
-
-        <li class="step">
-          <h3>Step 2 — Upload the image to your fork</h3>
-          <p>Drag in the file you downloaded above, then commit it to your fork's main branch.</p>
-          <a id="step-upload-link" class="btn step-link" target="_blank" rel="noopener">Upload image</a>
-          <label class="checkbox-label">
-            <input id="step-upload-done" type="checkbox"> I've uploaded and committed the image
-          </label>
-        </li>
-
-        <li class="step">
-          <h3>Step 3 — Create the JSON file</h3>
-          <p>Opens pre-filled — just review and hit commit.</p>
-          <p id="truncation-warning" class="warning" hidden>
-            Your description was too long to fit in the pre-filled link and was shortened. Feel free to edit it back in on GitHub before committing.
-          </p>
-          <a id="step-create-link" class="btn step-link" target="_blank" rel="noopener">Create JSON file</a>
-          <label class="checkbox-label">
-            <input id="step-create-done" type="checkbox"> I've committed the JSON file
-          </label>
-        </li>
-
-        <li class="step">
-          <h3>Step 4 — Open the pull request</h3>
-          <p>Both files must exist in your fork first (steps 2 and 3), or the PR diff will only show one of them.</p>
-          <a id="step-pr-link" class="btn step-link" target="_blank" rel="noopener">Open pull request</a>
-        </li>
-      </ol>
-
+    <section id="success-section" hidden>
+      <p class="note-success" id="success-message"></p>
       <p class="section-note">
-        Submissions are auto-merged once automated checks pass — no human reviews the image before it goes live.
-        See <a href="CONTRIBUTING.md">CONTRIBUTING.md</a> for details.
+        It's saved in this browser too, so you'll see it under "Your pending submissions" on the
+        <a href="index.html">GuliDex</a> right away — use "Check status" there once it's had a minute to process.
       </p>
-
-      <button id="start-over-btn" type="button" class="btn">Start over</button>
+      <p class="section-note">
+        <a id="success-pr-link" target="_blank" rel="noopener">View the pull request on GitHub</a>
+      </p>
+      <button id="submit-another-btn" type="button" class="btn">Submit another</button>
     </section>
   </main>
 
