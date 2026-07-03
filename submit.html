@@ -41,7 +41,10 @@
 
         <div class="field">
           <label for="field-image">Gilguli image <span class="required">*</span></label>
-          <input id="field-image" name="image" type="file" accept="image/*" required>
+          <label id="dropzone" for="field-image" class="dropzone">
+            <input id="field-image" name="image" type="file" accept="image/*" required class="dropzone-input">
+            <span class="dropzone-text" id="dropzone-text">Drag & drop an image, or tap to choose a file or take a photo</span>
+          </label>
           <p class="field-hint" id="preview-note"></p>
           <canvas id="preview-canvas" class="preview-canvas"></canvas>
         </div>

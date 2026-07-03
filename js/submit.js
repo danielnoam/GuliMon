@@ -9,6 +9,8 @@ const nameInput = document.getElementById('field-name');
 const descriptionInput = document.getElementById('field-description');
 const uploaderInput = document.getElementById('field-uploader');
 const fileInput = document.getElementById('field-image');
+const dropzone = document.getElementById('dropzone');
+const dropzoneText = document.getElementById('dropzone-text');
 const descCounter = document.getElementById('description-counter');
 const formErrors = document.getElementById('form-errors');
 const previewCanvas = document.getElementById('preview-canvas');
@@ -32,9 +34,35 @@ descriptionInput.addEventListener('input', () => {
 });
 descCounter.textContent = `0 / ${MAX_DESCRIPTION_LEN}`;
 
-fileInput.addEventListener('change', async () => {
-  const file = fileInput.files[0];
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+['dragenter', 'dragover'].forEach((eventName) => {
+  dropzone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    dropzone.classList.add('is-dragover');
+  });
+});
+
+['dragleave', 'dragend', 'drop'].forEach((eventName) => {
+  dropzone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    dropzone.classList.remove('is-dragover');
+  });
+});
+
+dropzone.addEventListener('drop', (event) => {
+  const file = event.dataTransfer.files[0];
   if (!file) return;
+  // Keeps the real <input> in sync so form submission/reset behave normally.
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  fileInput.files = transfer.files;
+  handleFile(file);
+});
+
+async function handleFile(file) {
+  if (!file) return;
+  dropzoneText.textContent = file.name;
   previewNote.textContent = 'Processing image…';
   try {
     compressedBlob = await resizeImageToBlob(file, MAX_IMAGE_DIM, MAX_IMAGE_BYTES);
@@ -43,7 +71,7 @@ fileInput.addEventListener('change', async () => {
     previewNote.textContent = `Could not process that image: ${err.message}`;
     compressedBlob = null;
   }
-});
+}
 
 async function resizeImageToBlob(file, maxDim, maxBytes) {
   const img = await loadImage(file);
@@ -150,6 +178,7 @@ submitAnotherBtn.addEventListener('click', () => {
   form.reset();
   compressedBlob = null;
   previewNote.textContent = '';
+  dropzoneText.textContent = 'Drag & drop an image, or tap to choose a file or take a photo';
   descCounter.textContent = `0 / ${MAX_DESCRIPTION_LEN}`;
   formErrors.textContent = '';
   formSection.hidden = false;
