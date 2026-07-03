@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit a Gilguli — GuliMon</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1 class="site-title"><a href="index.html">GuliMon</a></h1>
+      <p class="site-tagline">Submit a Gilguli to the GuliDex.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="form-section">
+      <p class="section-note">
+        You'll need a <a href="https://github.com/signup" target="_blank" rel="noopener">GitHub account</a> and to be logged into
+        github.com in this browser — submitting means opening a pull request under your own account, there's no login here.
+      </p>
+
+      <form id="submit-form" novalidate>
+        <div class="field">
+          <label for="field-name">Gilguli name <span class="required">*</span></label>
+          <input id="field-name" name="name" type="text" required maxlength="40" placeholder="Pyro Fox">
+        </div>
+
+        <div class="field">
+          <label for="field-description">Description <span class="optional">(optional)</span></label>
+          <textarea id="field-description" name="description" rows="3" maxlength="300" placeholder="A small ember-colored Gilguli that hides in warm ash."></textarea>
+          <p class="field-hint" id="description-counter">0 / 300</p>
+        </div>
+
+        <div class="field">
+          <label for="field-username">Your GitHub username <span class="required">*</span></label>
+          <input id="field-username" name="username" type="text" required placeholder="octocat">
+          <p class="field-hint">Needed to build your fork/upload/PR links in the next step.</p>
+        </div>
+
+        <div class="field">
+          <label for="field-image">Gilguli image <span class="required">*</span></label>
+          <input id="field-image" name="image" type="file" accept="image/*" required>
+          <p class="field-hint" id="preview-note"></p>
+          <canvas id="preview-canvas" class="preview-canvas"></canvas>
+        </div>
+
+        <p id="form-errors" class="form-errors" role="alert"></p>
+
+        <button id="generate-btn" type="submit" class="btn btn-primary">Continue</button>
+      </form>
+    </section>
+
+    <section id="steps-section" hidden>
+      <p id="pending-saved-note" class="note-success" hidden>
+        Saved to this browser — you'll see it under "Your pending submissions" on the <a href="index.html">GuliDex</a> right away.
+      </p>
+
+      <div class="download-action">
+        <h3>Download your image</h3>
+        <p>Save the resized image first. You'll upload this exact file to GitHub in step 2.</p>
+        <button id="step-download-btn" type="button" class="btn">Download image</button>
+      </div>
+
+      <ol class="steps">
+        <li class="step">
+          <h3>Step 1 — Fork the repo</h3>
+          <p>Opens in a new tab. Fork it to your own GitHub account (this only needs to happen once).</p>
+          <a id="step-fork-link" class="btn step-link" target="_blank" rel="noopener">Fork on GitHub</a>
+        </li>
+
+        <li class="step">
+          <h3>Step 2 — Upload the image to your fork</h3>
+          <p>Drag in the file you downloaded above, then commit it to your fork's main branch.</p>
+          <a id="step-upload-link" class="btn step-link" target="_blank" rel="noopener">Upload image</a>
+          <label class="checkbox-label">
+            <input id="step-upload-done" type="checkbox"> I've uploaded and committed the image
+          </label>
+        </li>
+
+        <li class="step">
+          <h3>Step 3 — Create the JSON file</h3>
+          <p>Opens pre-filled — just review and hit commit.</p>
+          <p id="truncation-warning" class="warning" hidden>
+            Your description was too long to fit in the pre-filled link and was shortened. Feel free to edit it back in on GitHub before committing.
+          </p>
+          <a id="step-create-link" class="btn step-link" target="_blank" rel="noopener">Create JSON file</a>
+          <label class="checkbox-label">
+            <input id="step-create-done" type="checkbox"> I've committed the JSON file
+          </label>
+        </li>
+
+        <li class="step">
+          <h3>Step 4 — Open the pull request</h3>
+          <p>Both files must exist in your fork first (steps 2 and 3), or the PR diff will only show one of them.</p>
+          <a id="step-pr-link" class="btn step-link" target="_blank" rel="noopener">Open pull request</a>
+        </li>
+      </ol>
+
+      <p class="section-note">
+        Submissions are auto-merged once automated checks pass — no human reviews the image before it goes live.
+        See <a href="CONTRIBUTING.md">CONTRIBUTING.md</a> for details.
+      </p>
+
+      <button id="start-over-btn" type="button" class="btn">Start over</button>
+    </section>
+  </main>
+
+  <script type="module" src="js/submit.js"></script>
+</body>
+</html>

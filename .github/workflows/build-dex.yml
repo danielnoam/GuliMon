@@ -1,0 +1,35 @@
+name: Build Dex
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build dex.json
+        run: node .github/scripts/build-dex.mjs
+
+      - name: Commit dex.json if changed
+        run: |
+          if git diff --quiet -- data/dex.json; then
+            echo "data/dex.json unchanged, nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/dex.json
+          git commit -m "chore: rebuild dex.json [skip ci]"
+          git push

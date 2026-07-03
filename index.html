@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GuliMon — GuliDex</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1 class="site-title">GuliMon</h1>
+      <p class="site-tagline">The GuliDex — a public gallery of Gilgulis, submitted by visitors like you.</p>
+      <nav class="site-nav">
+        <a class="btn btn-primary" href="submit.html">Submit your Gilguli</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="pending-section" hidden>
+      <h2>Your pending submissions</h2>
+      <p class="section-note">
+        These are saved in this browser only, until their GitHub PR is merged. Use "Check status" to see if a submission has gone public.
+      </p>
+      <div id="pending-grid" class="grid"></div>
+    </section>
+
+    <section>
+      <h2>GuliDex</h2>
+      <p id="public-empty" class="section-note" hidden>No Gilgulis yet — be the first to submit one!</p>
+      <div id="public-grid" class="grid"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>GuliMon is a static site with no backend. Submissions are added via GitHub pull request and auto-merged after passing automated checks — no human reviews content before it goes live.</p>
+    </div>
+  </footer>
+
+  <script type="module" src="js/dex.js"></script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+name: Automerge Submission
+
+# Triggered by validate-submission.yml's completion rather than directly by
+# `pull_request`, so it only ever runs after validation has actually
+# finished (no race), and — just as important — `workflow_run` always gets
+# a token with the permissions below even when the underlying PR is from a
+# fork, unlike `pull_request` (read-only for forks) or `pull_request_target`
+# (write, but runs untrusted fork code with a privileged token — the classic
+# footgun). This is the safe way to act with write permissions on fork PRs.
+on:
+  workflow_run:
+    workflows: ["Validate Submission"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  actions: read
+
+jobs:
+  automerge:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download validation results
+        id: download
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: validation-results
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment results and merge if safe
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const headSha = context.payload.workflow_run.head_sha;
+            const runConclusion = context.payload.workflow_run.conclusion;
+
+            // Fork PRs are frequently missing from workflow_run.pull_requests
+            // (a documented GitHub limitation), so look up the PR via the
+            // commit instead — this works regardless of fork origin.
+            const { data: commitPrs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: headSha,
+            });
+            const pr = commitPrs.find((p) => p.state === 'open' && p.base.ref === 'main' && p.head.sha === headSha);
+
+            if (!pr) {
+              core.info(`No open PR targeting main found for head SHA ${headSha}. Nothing to do.`);
+              return;
+            }
+
+            async function comment(body) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body,
+              });
+            }
+
+            // Build the validation summary comment from the uploaded artifact.
+            let resultsBody = '_No validation results artifact was found — treating as failed._';
+            let hasFailure = true;
+            try {
+              const raw = fs.readFileSync(`${process.env.GITHUB_WORKSPACE}/validation-results.json`, 'utf8');
+              const parsed = JSON.parse(raw);
+              hasFailure = parsed.hasFailure;
+              const rows = parsed.results.map((r) => `| ${r.ok ? '✅' : '❌'} | ${r.check} | ${r.detail || ''} |`);
+              resultsBody = [
+                '| | Check | Detail |',
+                '|---|---|---|',
+                ...rows,
+              ].join('\n');
+            } catch (err) {
+              core.warning(`Could not read validation results: ${err.message}`);
+            }
+
+            await comment([
+              `### Submission validation ${hasFailure ? '❌ failed' : '✅ passed'}`,
+              '',
+              resultsBody,
+            ].join('\n'));
+
+            if (runConclusion !== 'success' || hasFailure) {
+              core.info('Validation did not pass — not merging.');
+              return;
+            }
+
+            // Defense in depth: re-confirm the PR touches only submissions/**,
+            // since automerge is unattended and this is the actual security
+            // boundary once content is live without human review.
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+            const outOfScope = files.filter((f) => !f.filename.startsWith('submissions/'));
+            if (outOfScope.length > 0) {
+              const msg = `Automerge skipped: PR touches files outside \`submissions/\`: ${outOfScope.map((f) => f.filename).join(', ')}`;
+              core.warning(msg);
+              await comment(msg);
+              return;
+            }
+
+            // Re-confirm via the Checks API directly rather than trusting
+            // that this workflow_run firing means the check truly passed.
+            const { data: checkData } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: headSha,
+            });
+            const validateCheck = checkData.check_runs
+              .filter((c) => c.name === 'validate')
+              .sort((a, b) => new Date(b.started_at) - new Date(a.started_at))[0];
+
+            if (!validateCheck || validateCheck.conclusion !== 'success') {
+              const msg = `Automerge skipped: the "validate" check run is not successful (found: ${validateCheck ? validateCheck.conclusion : 'none'}).`;
+              core.warning(msg);
+              await comment(msg);
+              return;
+            }
+
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                merge_method: 'squash',
+                sha: headSha, // only merge if head hasn't moved since validation
+              });
+              await comment(`Automerged after passing validation (head SHA \`${headSha.slice(0, 7)}\`).`);
+            } catch (err) {
+              const msg = [
+                `Automerge failed: ${err.message}`,
+                '',
+                'If this is a permissions error, check repo Settings → Actions → General → Workflow permissions →',
+                '"Allow GitHub Actions to create and approve pull requests" is enabled.',
+              ].join('\n');
+              core.warning(msg);
+              await comment(msg);
+            }

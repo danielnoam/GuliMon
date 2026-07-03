@@ -1,0 +1,47 @@
+name: Validate Submission
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'submissions/**'
+
+# Fork PRs always get a read-only GITHUB_TOKEN on the `pull_request` event
+# regardless of this block, by GitHub's own design. This job never needs to
+# write anything (comment-posting happens later, from automerge-submission.yml,
+# which runs via `workflow_run` and safely gets a writable token) — its only
+# job is to read the diff and fail its own check run on violations.
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-save image-size
+
+      - name: Run validation
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/validate-submission.mjs
+
+      - name: Upload validation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-results
+          path: validation-results.json
+          retention-days: 7
