@@ -52,6 +52,16 @@ test('rejects an invalid createdAt', () => {
   assert.ok(errors.some((e) => e.startsWith('createdAt:')));
 });
 
+test('accepts a valid updatedAt', () => {
+  const { errors } = validateEntry({ ...validEntry, updatedAt: '2026-07-04T00:00:00.000Z' }, validEntry.id);
+  assert.deepEqual(errors, []);
+});
+
+test('rejects an invalid updatedAt', () => {
+  const { errors } = validateEntry({ ...validEntry, updatedAt: 'not-a-date' }, validEntry.id);
+  assert.ok(errors.some((e) => e.startsWith('updatedAt:')));
+});
+
 test('rejects missing required fields', () => {
   const { errors } = validateEntry({}, 'anything');
   assert.ok(errors.length >= 3);

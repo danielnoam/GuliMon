@@ -12,6 +12,7 @@
 import { validateEntry, MAX_NAME_LEN, MAX_DESCRIPTION_LEN, MAX_UPLOADER_NAME_LEN } from '../../js/schema.js';
 import { generateId } from '../../js/id.js';
 import { readPngDimensions } from '../../js/png-dimensions.js';
+import { ghClient, bytesToBase64, json } from '../_shared/github.js';
 
 const OWNER = 'danielnoam';
 const REPO = 'GuliMon';
@@ -119,49 +120,4 @@ export async function onRequestPost({ request, env }) {
   } catch (err) {
     return json({ ok: false, error: `Could not open the submission PR: ${err.message}` }, 502);
   }
-}
-
-function ghClient(token) {
-  return async (path, { method = 'GET', body } = {}) => {
-    const res = await fetch(`https://api.github.com${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'GuliMon-Submit-Function',
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    if (!res.ok) {
-      let detail = res.statusText;
-      try {
-        const data = await res.json();
-        detail = data.message || detail;
-      } catch {
-        // response wasn't JSON — fall back to statusText
-      }
-      throw new Error(`GitHub API ${method} ${path} failed (${res.status}): ${detail}`);
-    }
-
-    return res.status === 204 ? null : res.json();
-  };
-}
-
-export function bytesToBase64(bytes) {
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
-
-function json(payload, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
 }

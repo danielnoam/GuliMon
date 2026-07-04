@@ -9,31 +9,37 @@ entry in the public **GuliDex** — one click, no account required.
 
 ## How it works, in short
 
-The site is almost entirely static. The one exception is
-`functions/api/submit.js`, a Cloudflare Pages Function that holds the
-project's only secret (a GitHub token) and does the GitHub work a visitor
-used to have to do by hand: it creates a branch, commits the image + JSON,
-and opens a pull request. Everything downstream — validation and
-auto-merge — is unchanged, unattended, GitHub Actions.
+The site is almost entirely static. The exceptions are two Cloudflare Pages
+Functions that share the project's only secret (a GitHub token):
+`functions/api/submit.js` creates a branch, commits the image + JSON, and
+opens a pull request (everything downstream — validation and auto-merge —
+is unchanged, unattended GitHub Actions); `functions/api/edit.js` lets
+*anyone* edit or remove *any* entry — no ownership check, no account,
+deliberately open — committing straight to `main` instead of going through
+a PR.
 
 Until a submission's PR merges, it only exists in the submitting browser's
 `localStorage`, shown as "pending" on the GuliDex.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full flow and the tradeoffs
-behind fully automated, human-free moderation (and the currently-accepted
-lack of a login/CAPTCHA gate on submission).
+behind fully automated, human-free, open moderation (no login/CAPTCHA gate
+on submission, and no ownership gate on editing).
 
 ## Repo layout
 
 ```
-/index.html                  GuliDex — browse public + local-pending Gilgulis
+/index.html                  GuliDex — browse public + local-pending Gilgulis, edit/remove any entry
 /submit.html                 Submission form
 /css/style.css
-/js/dex.js                   Fetch data/dex.json, merge with localStorage pending, render grid
+/js/dex.js                   Fetch data/dex.json, merge with localStorage pending, render grid + edit/remove UI
 /js/submit.js                Form handling, image resize, POST to /api/submit
 /js/id.js                    Submission id generation (slugify + random suffix), used server-side
-/js/schema.js                Submission schema + validator, shared by the function and the CI scripts
-/functions/api/submit.js     Cloudflare Pages Function — the only server-side code, holds GITHUB_TOKEN
+/js/schema.js                Submission schema + validator, shared by the functions and the CI scripts
+/js/image-compress.js        Client-side canvas resize/compress, shared by submit form and dex edit form
+/js/png-dimensions.js         Dependency-free PNG dimension reader, shared by functions and CI scripts
+/functions/api/submit.js     Cloudflare Pages Function — creates the submission PR
+/functions/api/edit.js       Cloudflare Pages Function — updates/deletes any entry direct to main
+/functions/_shared/github.js  GitHub REST client + base64 helpers shared by both functions
 /data/dex.json                Generated — do not hand-edit. Rebuilt by build-dex.yml on push to main.
 /submissions/                One <id>.json + <id>.png pair per submission
 /.github/workflows/          validate-submission.yml, automerge-submission.yml, build-dex.yml
@@ -48,14 +54,14 @@ npm install
 npx wrangler pages dev .
 ```
 
-`wrangler pages dev` serves the static files and runs `functions/api/submit.js`
+`wrangler pages dev` serves the static files and runs both functions
 locally, matching production. You'll need a `.dev.vars` file (gitignored)
-with `GITHUB_TOKEN=...` for the function to actually reach GitHub — see
+with `GITHUB_TOKEN=...` for either function to actually reach GitHub — see
 Deployment below for how to create that token.
 
 Opening `index.html`/`submit.html` directly via a plain static server (e.g.
-`npx serve .`) works for browsing the GuliDex, but `/api/submit` won't exist
-without `wrangler pages dev` or a real deployment.
+`npx serve .`) works for browsing the GuliDex, but `/api/submit` and
+`/api/edit` won't exist without `wrangler pages dev` or a real deployment.
 
 ## Tests
 
@@ -65,21 +71,22 @@ npm test
 
 ## Deployment
 
-1. **Create a GitHub token for the function.** In your GitHub account:
+1. **Create a GitHub token for the functions.** In your GitHub account:
    Settings → Developer settings → Fine-grained tokens → Generate new token,
    scoped to **only this repository**, with repository permissions
    `Contents: Read and write` and `Pull requests: Read and write`. No other
-   scopes needed.
+   scopes needed. Both `submit.js` and `edit.js` use this same token.
 2. **Create a Cloudflare Pages project** connected to this repo (or deploy
    via `npx wrangler pages deploy .`). Build command: none. Output
    directory: `/` (repo root) — there's no build step.
 3. **Set the secret**: in the Pages project's Settings → Environment
    variables, add `GITHUB_TOKEN` (as a secret, not plaintext) with the token
-   from step 1. Cloudflare Pages auto-detects `functions/api/submit.js` and
-   serves it at `/api/submit` alongside the static site — no extra config.
-4. Confirm `OWNER`/`REPO`/`BASE_BRANCH` at the top of
-   `functions/api/submit.js` match this repo (they're hardcoded, same as the
-   rest of the project).
+   from step 1. Cloudflare Pages auto-detects everything under
+   `functions/api/` and serves it (`/api/submit`, `/api/edit`) alongside the
+   static site — no extra config.
+4. Confirm `OWNER`/`REPO`/`BASE_BRANCH` at the top of both
+   `functions/api/submit.js` and `functions/api/edit.js` match this repo
+   (they're hardcoded, same as the rest of the project).
 5. In this repo's Settings → Actions → General → Workflow permissions,
    enable "Allow GitHub Actions to create and approve pull requests" — this
    is what lets `automerge-submission.yml` merge PRs and delete their

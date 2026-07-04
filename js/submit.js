@@ -1,7 +1,6 @@
 import { MAX_NAME_LEN, MAX_DESCRIPTION_LEN, MAX_UPLOADER_NAME_LEN } from './schema.js';
+import { resizeImageToBlob } from './image-compress.js';
 
-const MAX_IMAGE_DIM = 512;
-const MAX_IMAGE_BYTES = 500 * 1024;
 const PENDING_KEY = 'gulimon_pending';
 
 const form = document.getElementById('submit-form');
@@ -65,44 +64,12 @@ async function handleFile(file) {
   dropzoneText.textContent = file.name;
   previewNote.textContent = 'Processing image…';
   try {
-    compressedBlob = await resizeImageToBlob(file, MAX_IMAGE_DIM, MAX_IMAGE_BYTES);
+    compressedBlob = await resizeImageToBlob(file, previewCanvas);
     previewNote.textContent = `Ready — ${previewCanvas.width}×${previewCanvas.height}px, ${(compressedBlob.size / 1024).toFixed(0)}KB`;
   } catch (err) {
     previewNote.textContent = `Could not process that image: ${err.message}`;
     compressedBlob = null;
   }
-}
-
-async function resizeImageToBlob(file, maxDim, maxBytes) {
-  const img = await loadImage(file);
-  let scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-  const ctx = previewCanvas.getContext('2d');
-
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const w = Math.max(1, Math.round(img.width * scale));
-    const h = Math.max(1, Math.round(img.height * scale));
-    previewCanvas.width = w;
-    previewCanvas.height = h;
-    ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(img, 0, 0, w, h);
-
-    const blob = await new Promise((resolve) => previewCanvas.toBlob(resolve, 'image/png'));
-    if (!blob) throw new Error('canvas export failed');
-    if (blob.size <= maxBytes || w <= 64 || h <= 64) {
-      return blob;
-    }
-    scale *= 0.85; // still too big — shrink further and retry
-  }
-  throw new Error('image could not be compressed under the size cap');
-}
-
-function loadImage(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('unreadable image file'));
-    img.src = URL.createObjectURL(file);
-  });
 }
 
 form.addEventListener('submit', async (event) => {

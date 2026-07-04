@@ -19,7 +19,7 @@ export function validateEntry(entry, expectedId) {
     return { errors: ['must be a JSON object'] };
   }
 
-  const { id, name, description, uploaderName, image, createdAt } = entry;
+  const { id, name, description, uploaderName, image, createdAt, updatedAt } = entry;
 
   if (typeof id !== 'string' || id.length === 0) {
     errors.push('id: required string');
@@ -64,6 +64,12 @@ export function validateEntry(entry, expectedId) {
 
   if (typeof createdAt !== 'string' || Number.isNaN(Date.parse(createdAt))) {
     errors.push('createdAt: required valid ISO 8601 string');
+  }
+
+  if (updatedAt !== undefined && updatedAt !== null) {
+    if (typeof updatedAt !== 'string' || Number.isNaN(Date.parse(updatedAt))) {
+      errors.push('updatedAt: must be a valid ISO 8601 string');
+    }
   }
 
   return { errors };
